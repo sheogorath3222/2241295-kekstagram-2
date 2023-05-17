@@ -1,6 +1,4 @@
-import {getRandomNumber} from './util.js';
-
-const uniqueCommentIds = new Set();
+import {getRandomNumber} from './utils.js';
 
 const descriptionSentences = [
   'Читайте нас в Telegram',
@@ -14,26 +12,60 @@ const commentSentences = [
 
 const names = ['Айрат', 'Ахмат', 'Тамерлан', 'Тимур', 'Карина', 'Лиза'];
 
-const generateCommentId = () => {
-  let commentId = getRandomNumber(1, 100);
-  while (uniqueCommentIds.has(commentId)) {
-    commentId = getRandomNumber(1, 100);
-  }
-  uniqueCommentIds.add(commentId);
-  return commentId;
-};
-const createComment = () => ({
+function generateId(type, min, max) {
+  let lastGeneratedId = 0;
+  const previousValues = new Set();
+
+  return function () {
+    if (previousValues.size >= (max - min + 1)) {
+      throw new Error('Выход за границы диапазона');
+    }
+
+    let currentValue;
+    do {
+      currentValue = getRandomNumber(min, max);
+    } while (previousValues.has(currentValue));
+
+    previousValues.add(currentValue);
+
+    switch (type) {
+      case 'publication':
+        lastGeneratedId += 1;
+        return lastGeneratedId;
+
+      case 'photo':
+        lastGeneratedId += 1;
+        return `img-${lastGeneratedId}`;
+
+      case 'comment':
+        return currentValue;
+
+      default:
+        throw new Error('Неизвестный тип ID');
+    }
+  };
+}
+
+const generatePublicationId = generateId('publication', 1, Infinity);
+const generatePhotoId = generateId('photo', 1, Infinity);
+const generateCommentId = generateId('comment', 1, 2 ** 20);
+
+const generateComment = () => ({
   id: generateCommentId(),
   avatar: `img/avatar-${getRandomNumber(1, 6)}.svg`,
   message: commentSentences[getRandomNumber(0, commentSentences.length - 1)],
   name: names[getRandomNumber(0, names.length - 1)]
 });
-const createPublication = (id) => ({
-  id: id,
-  url: `photos/${id}.jpg`,
+
+const generatePublication = () => ({
+  id: generatePublicationId(),
+  url: `photos/${generatePhotoId()}.jpg`,
   description: descriptionSentences[getRandomNumber(0, descriptionSentences.length - 1)],
   likes: getRandomNumber(15, 200),
-  comments: Array.from({length: getRandomNumber(1, 2)}, createComment)
+  comments: Array.from({length: getRandomNumber(0, 24)}, generateComment)
 });
 
-const publication = Array.from({length: 25}, (v, k) => createPublication(k + 1));
+const generatePictures = (amount) => (Array.from({length: amount}, () => generatePublication()));
+const pictures = generatePictures(25);
+
+export {pictures};
